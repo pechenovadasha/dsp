@@ -1,5 +1,4 @@
 function [dX] = SINC_paper(X_t, A, N_used, TH, max_EVM, Nfft, scen)
-
 Nsym=size(X_t,1); % Number of OFDM symbols in the initial time-domain signal
 
 Ndac=scen.Ndac; % Number of digital-to-analog converters
@@ -50,64 +49,122 @@ S_t_ant_canc_peak=zeros(Nsym,Nant,Nfft);
 % Number of iterations for peaks positions search per interval
 M_iter = 2;
 
-% find peaks to reduce
+
+
+%%%%%%%%%%%%%%New way to find intervals%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%find peaks to reduce
 for i1=1:Nsym
-    
+    % fprintf("i1 =%d\n", i1);
     for i2=1:Nant
-        
+        % fprintf("i2 =%d\n", i2);
         % Extract signal at particular symbol at particular antenna
         S_t = squeeze(S_t_ant(i1,i2,:)).';
+        % Извлекаем интервалы для текущего символа и антенны
+        min_inds = find_intervals(S_t);
 
-        % PAPR reduction algorithm
-        for j=1:N_iter
-            S_t_canc_tmp=zeros(1,Nfft);
-            for p = 1:M_iter
-                Nintervals = Nfft/N_samples; 
-                
-                % Peaks positions and amplidute per interval
-                sinc_Ampl = zeros(Nintervals,1);
-                sinc_shift = zeros(Nintervals,1);
-                for k=1:Nintervals
-                    
-                    % Extract signal at particular interval
-                    signal = S_t((k-1)*N_samples+1:k*N_samples);
+        % Пошаговое подавление пиков
+        for j = 1:N_iter
+            S_t_canc_tmp = zeros(1, Nfft);
 
-                    [Max_value,Indx] = max(abs(signal));
+            % Проходим по всем интервалам
+            for k = 1:length(min_inds) - 1
+                interval_start = min_inds(k);
+                interval_end = min_inds(k + 1) - 1; % Интервалы закрыты
 
-                    % Check for threshold exceeding and peak parameters set
-                    if Max_value>TH_abs(j)
+                % Извлекаем сигнал на интервале
+                signal = S_t(interval_start:interval_end);
 
-                        % We are interested in peak value above the threshold
-                        sinc_Ampl(k) = signal(Indx)*(1 - TH_abs(j)/Max_value);
-                        
-                        % Global (among Nfft points) peak position
-                        sinc_shift(k) = Indx+(k-1)*N_samples;
-                    else
-                        sinc_Ampl(k)=0;
-                        sinc_shift(k)=1;
-                    end
-                    
-                    % Sum of sincs canceling found peaks
-                    S_t_canc_tmp = S_t_canc_tmp + sinc_Ampl(k)*circshift(SINC_t,[0 sinc_shift(k)-1]);
-                    
-                    % Sum of delta functions canceling found peaks 
-                    % (they are transformed to DAC domain)
-                    S_t_ant_canc_peak(i1,i2,Indx+(k-1)*N_samples) = S_t_ant_canc_peak(i1,i2,Indx+(k-1)*N_samples) + sinc_Ampl(k); 
+                % Находим максимум и его индекс
+                [Max_value, Indx] = max(abs(signal));
+
+                % Проверяем порог
+                if Max_value > TH_abs(j)
+                    % Амплитуда подавления
+                    sinc_Ampl = signal(Indx) * (1 - TH_abs(j) / Max_value);
+
+                    % Глобальная позиция пика
+                    sinc_shift = interval_start + Indx - 1;
+
+                    % Суммируем синусоиды для подавления
+                    S_t_canc_tmp = S_t_canc_tmp + sinc_Ampl * circshift(SINC_t, [0, sinc_shift - 1]);
+
+                    % Запоминаем подавляемый пик
+                    S_t_ant_canc_peak(i1, i2, sinc_shift) = ...
+                        S_t_ant_canc_peak(i1, i2, sinc_shift) + sinc_Ampl;
                 end
-                
-                S_t = S_t - S_t_canc_tmp;
-                S_t_canc(i1,i2,:) = squeeze(S_t_canc(i1,i2,:)) + S_t_canc_tmp.';
-                
             end
+
+            % Обновляем сигнал после подавления
+            S_t = S_t - S_t_canc_tmp;
+            S_t_canc(i1, i2, :) = squeeze(S_t_canc(i1, i2, :)) + S_t_canc_tmp.';
         end
-        
-        % Modified signal after per-antenna PAPR reduction
-        S_t_ant_new(i1,i2,:) = S_t;
-        
+
+        % Сохраняем модифицированный сигнал
+        S_t_ant_new(i1, i2, :) = S_t;
+
     end
 end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% Now we need to check what happens in DAC domain
+%Old variant 
+
+% for i1=1:Nsym
+% 
+%     for i2=1:Nant
+% 
+%         % Extract signal at particular symbol at particular antenna
+%         S_t = squeeze(S_t_ant(i1,i2,:)).';
+% 
+%         % PAPR reduction algorithm
+%         for j=1:N_iter
+%             S_t_canc_tmp=zeros(1,Nfft);
+%             for p = 1:M_iter
+%                 Nintervals = Nfft/N_samples; 
+% 
+%                 % Peaks positions and amplidute per interval
+%                 sinc_Ampl = zeros(Nintervals,1);
+%                 sinc_shift = zeros(Nintervals,1);
+%                 for k=1:Nintervals
+% 
+%                     % Extract signal at particular interval
+%                     signal = S_t((k-1)*N_samples+1:k*N_samples);
+% 
+%                     [Max_value,Indx] = max(abs(signal));
+% 
+%                     % Check for threshold exceeding and peak parameters set
+%                     if Max_value>TH_abs(j)
+% 
+%                         % We are interested in peak value above the threshold
+%                         sinc_Ampl(k) = signal(Indx)*(1 - TH_abs(j)/Max_value);
+% 
+%                         % Global (among Nfft points) peak position
+%                         sinc_shift(k) = Indx+(k-1)*N_samples;
+%                     else
+%                         sinc_Ampl(k)=0;
+%                         sinc_shift(k)=1;
+%                     end
+% 
+%                     % Sum of sincs canceling found peaks
+%                     S_t_canc_tmp = S_t_canc_tmp + sinc_Ampl(k)*circshift(SINC_t,[0 sinc_shift(k)-1]);
+% 
+%                     % Sum of delta functions canceling found peaks 
+%                     % (they are transformed to DAC domain)
+%                     S_t_ant_canc_peak(i1,i2,Indx+(k-1)*N_samples) = S_t_ant_canc_peak(i1,i2,Indx+(k-1)*N_samples) + sinc_Ampl(k); 
+%                 end
+% 
+%                 S_t = S_t - S_t_canc_tmp;
+%                 S_t_canc(i1,i2,:) = squeeze(S_t_canc(i1,i2,:)) + S_t_canc_tmp.';
+% 
+%             end
+%         end
+% 
+%         % Modified signal after per-antenna PAPR reduction
+%         S_t_ant_new(i1,i2,:) = S_t;
+% 
+%     end
+% end
+% 
+% % Now we need to check what happens in DAC domain
 S_t_dac_canc_sig=zeros(Nsym,Ndac,Nfft);
 S_t_dac_canc_peak = zeros(Nsym,Ndac,Nfft);
 S_t_ant_canc_peak_new=zeros(Nsym,Nant,Nfft);
@@ -116,7 +173,7 @@ for i1=1:Nsym
     for i3=1:Nfft
         % Extract signal at all antennas
         sig = squeeze(S_t_ant_canc_peak(i1,:,i3));
-        
+
         % Check for found peaks
         indx = find(abs(sig));
 
@@ -129,11 +186,11 @@ for i1=1:Nsym
         else
             S_t_dac_canc_peak(i1,:,i3) = zeros(1,Ndac);
         end
-        
+
     end
     % Go back to antenna domain 
     S_t_ant_canc_peak_new(i1,:,:) = A * squeeze(S_t_dac_canc_peak(i1,:,:));
-    
+
     % Convolve peaks with sinc functions in DAC domain to satisfy spectrum
     % mask
     for i2=1:Ndac
