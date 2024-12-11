@@ -233,6 +233,7 @@
 % dS = S_t_ant_new2;
 % dX = permute(dS, [1,3,2]);
 
+% 
 function [dX] = SINC_paper(X_t, A, N_used, TH, max_EVM, Nfft, scen)
     Nsym = size(X_t, 1); % Количество символов OFDM в исходном временном сигнале
     Ndac = scen.Ndac; % Количество цифро-аналоговых преобразователей
