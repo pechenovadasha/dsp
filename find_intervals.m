@@ -37,8 +37,8 @@ function intervals = find_intervals(x_t)
 
           
             % % Разбиение на интервалы, где границы - точки минимума
-            % num_intervals = length(min_inds) - 1;
-            % intervals_for_current = cell(num_intervals, 1);
+            num_intervals = length(min_inds) - 1;
+            intervals_for_current = cell(num_intervals, 1);
 
             % % Создаем новый рисунок для отображения
             % figure;
@@ -58,10 +58,10 @@ function intervals = find_intervals(x_t)
             % end
             % 
             % % Добавляем обозначения
-            % title(sprintf('Символ %d, Антенна %d', i1, i2));
-            % xlabel('Индекс');
-            % ylabel('Амплитуда');
-            % legend('Сигнал', 'Начало интервала', 'Конец интервала');
+            % title('Division by minimums');
+            % xlabel('Index');
+            % ylabel('Amplitude');
+            % legend('Signal', 'Start of interval', 'End of interval');
             % hold off;
         end
     end
