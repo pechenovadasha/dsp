@@ -18,7 +18,8 @@ switch algo
         [dX_t] = SINC_2D(X_t, Fa, Nsc, threshold, max_evm, Nfft,scenario);
     case 3
 
-        [dX_t] = SINC_paper(X_t, Fa, Nsc, threshold, max_evm, Nfft, scenario);
+        [dX_t] = test_paper(X_t, Fa, Nsc, threshold, max_evm, Nfft, scenario);
+        % [dX_t] = FIR_filter_paper(X_t, Fa, Nsc, threshold, max_evm, Nfft, scenario);
 end
 dX = ft_transform(dX_t,"t2f",scenario);
 
