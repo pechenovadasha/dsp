@@ -12,7 +12,8 @@ scenario.QAM_order = 8;
 scenario.max_evm = 0.125;
 
 
-PAPR_thresholds = [8 8 8]; % peak threshold in dB per iteration
+% PAPR_thresholds = [8 8 8]; % peak threshold in dB per iteration
+PAPR_thresholds = [8 8 8];
 scenario.papr_ccdf = 5:0.1:15;
 
 scenario.N_scen = 12; % Number of scenarios to simulate 
@@ -35,7 +36,7 @@ function metrics = scenarios_validation(scenario, ML_coef)
 N_scen = scenario.N_scen;
 metrics = struct('CCDF', cell(N_scen, 1));
 
-parfor index_i = 1:N_scen 
+for index_i = 1:N_scen 
     rng(index_i);
 
     scen = scenario;
